@@ -1,0 +1,953 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DietetikOps • Live Digital Shift & Task Board</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: { sans: ['Inter', 'sans-serif'] }
+                }
+            }
+        }
+    </script>
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #475569; border-radius: 999px; }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-900 dark:bg-slate-950 dark:text-slate-100 transition-colors duration-200 min-h-screen flex flex-col">
+
+    <!-- TOP NAVIGATION BAR -->
+    <header class="sticky top-0 z-40 border-b border-slate-200 dark:border-slate-800 bg-white/90 dark:bg-slate-950/90 backdrop-blur-md">
+        <div class="max-w-[1600px] mx-auto px-4 sm:px-6 h-16 flex items-center justify-between gap-4">
+            <div class="flex items-center gap-3">
+                <div class="w-9 h-9 rounded-xl bg-indigo-600 flex items-center justify-center text-white shadow-lg shadow-indigo-500/30">
+                    <i data-lucide="layout-grid" class="w-5 h-5"></i>
+                </div>
+                <div>
+                    <div class="flex items-center gap-2">
+                        <h1 class="font-bold text-base sm:text-lg tracking-tight">DietetikOps</h1>
+                        <span id="sync-badge" class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
+                            <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span> LIVE BOARD
+                        </span>
+                    </div>
+                    <p id="live-clock" class="text-xs text-slate-500 dark:text-slate-400 font-medium"></p>
+                </div>
+            </div>
+
+            <!-- 4 MEAL SESSIONS (DESKTOP) -->
+            <div class="hidden xl:flex items-center gap-1.5 bg-slate-100 dark:bg-slate-900 p-1 rounded-xl border border-slate-200 dark:border-slate-800" id="session-pills-desktop"></div>
+
+            <!-- RIGHT ACTION CONTROLS -->
+            <div class="flex items-center gap-2">
+                <button onclick="openMeritModal()" title="Manage Staff Overtime & Cumulative Fatigue" class="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-semibold border border-slate-200 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-900 transition">
+                    <i data-lucide="award" class="w-4 h-4 text-amber-500"></i>
+                    <span class="hidden md:inline">Merits & OT</span>
+                </button>
+                <button onclick="openCloudSetupModal()" title="Connect Google Sheets Sync" class="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-semibold border border-slate-200 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-900 transition">
+                    <i data-lucide="cloud" class="w-4 h-4 text-sky-500"></i>
+                    <span class="hidden md:inline">Cloud Sync</span>
+                </button>
+                <button onclick="toggleKioskMode()" id="kiosk-btn" title="Wall TV Fullscreen Mode" class="hidden sm:inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-semibold border border-slate-200 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-900 transition">
+                    <i data-lucide="monitor" class="w-4 h-4 text-indigo-500"></i>
+                    <span>TV Mode</span>
+                </button>
+                <button onclick="toggleTheme()" title="Toggle Light/Dark Mode" class="p-2 rounded-lg border border-slate-200 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-900 transition">
+                    <i data-lucide="sun" class="w-4 h-4 hidden dark:block text-amber-400"></i>
+                    <i data-lucide="moon" class="w-4 h-4 block dark:hidden text-slate-600"></i>
+                </button>
+                <button onclick="openAdminDrawer()" class="inline-flex items-center gap-2 px-3.5 py-2 rounded-lg text-xs font-semibold bg-indigo-600 hover:bg-indigo-500 text-white shadow-sm transition">
+                    <i data-lucide="sliders-horizontal" class="w-4 h-4"></i>
+                    <span>Update (SV)</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- 4 MEAL SESSIONS (MOBILE / TABLET) -->
+        <div class="xl:hidden px-4 pb-3 overflow-x-auto flex items-center gap-1.5" id="session-pills-mobile"></div>
+    </header>
+
+    <!-- SUB-HEADER: STAFF SEARCH & ROSTER DAY -->
+    <div id="control-bar" class="border-b border-slate-200 dark:border-slate-800/80 bg-white dark:bg-slate-900/50">
+        <div class="max-w-[1600px] mx-auto px-4 sm:px-6 py-3 flex flex-col md:flex-row md:items-center justify-between gap-3">
+            <!-- Staff Lookup -->
+            <div class="flex items-center gap-2.5 flex-1 max-w-xl">
+                <div class="relative flex-1">
+                    <i data-lucide="search" class="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"></i>
+                    <select id="staff-filter" onchange="handleStaffFilter()" class="w-full pl-9 pr-8 py-2 text-sm rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 focus:ring-2 focus:ring-indigo-500 outline-none font-medium">
+                        <option value="">Select your name to view your assigned tasks...</option>
+                    </select>
+                </div>
+                <button onclick="resetFilter()" id="clear-filter-btn" class="hidden px-3 py-2 text-xs font-semibold rounded-lg bg-slate-200 dark:bg-slate-800 hover:bg-slate-300 dark:hover:bg-slate-700 transition">
+                    Reset
+                </button>
+            </div>
+
+            <!-- Shift Roster Day Selector & Total Working Badges -->
+            <div class="flex items-center gap-3 flex-wrap text-xs">
+                <div class="flex items-center gap-2">
+                    <span class="text-slate-500 dark:text-slate-400 font-medium">Roster Day:</span>
+                    <select id="day-selector" onchange="handleDayChange()" class="px-2.5 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 font-semibold">
+                        <option value="16_Mon">Mon (16 Nov)</option>
+                        <option value="17_Tue">Tue (17 Nov)</option>
+                        <option value="18_Wed" selected>Wed (18 Nov)</option>
+                        <option value="19_Thu">Thu (19 Nov)</option>
+                        <option value="20_Fri">Fri (20 Nov)</option>
+                        <option value="21_Sat">Sat (21 Nov)</option>
+                        <option value="22_Sun">Sun (22 Nov)</option>
+                    </select>
+                </div>
+                <div id="shift-summary-badges" class="flex items-center gap-1.5 flex-wrap"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- PERSONAL TASK SPOTLIGHT BANNER -->
+    <div id="personal-spotlight" class="hidden max-w-[1600px] mx-auto px-4 sm:px-6 pt-5 w-full">
+        <div class="rounded-2xl bg-gradient-to-r from-indigo-600 to-violet-600 p-5 text-white shadow-xl flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div>
+                <div class="flex items-center gap-2 text-indigo-100 text-xs font-semibold uppercase tracking-wider mb-1">
+                    <i data-lucide="user-check" class="w-4 h-4"></i>
+                    <span id="spotlight-shift-status">Shift Status</span>
+                </div>
+                <h2 id="spotlight-name" class="text-xl sm:text-2xl font-extrabold"></h2>
+                <p id="spotlight-tasks" class="text-sm text-indigo-100 mt-1 font-medium"></p>
+            </div>
+            <div class="flex flex-col sm:items-end gap-1.5">
+                <span id="spotlight-session-tag" class="px-3.5 py-1.5 rounded-lg bg-white/15 backdrop-blur text-xs font-bold"></span>
+                <span id="spotlight-fatigue-tag" class="text-[11px] text-indigo-100 font-medium"></span>
+            </div>
+        </div>
+    </div>
+
+    <!-- MAIN 2-COLUMN DIGITAL WHITEBOARD -->
+    <main class="max-w-[1600px] mx-auto px-4 sm:px-6 py-5 flex-1 w-full">
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+            
+            <!-- LEFT COLUMN: MAIN LINE / PLATING (7 Cols) -->
+            <section class="lg:col-span-7 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/80 shadow-sm overflow-hidden">
+                <div class="px-4 py-3.5 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between bg-slate-50/70 dark:bg-slate-900">
+                    <div class="flex items-center gap-2">
+                        <span class="w-2.5 h-2.5 rounded-full bg-amber-400"></span>
+                        <h2 class="font-bold text-sm uppercase tracking-wider">1. Main Line (Plating)</h2>
+                    </div>
+                    <span class="text-xs font-semibold text-slate-400">Station • Staff • Workload • Post-Task</span>
+                </div>
+                <div id="line-container" class="divide-y divide-slate-100 dark:divide-slate-800/80"></div>
+            </section>
+
+            <!-- RIGHT COLUMN: TROLLEY, WATER, ROUND WAD & SACHET (5 Cols) -->
+            <section class="lg:col-span-5 space-y-5">
+                <div class="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/80 shadow-sm overflow-hidden">
+                    <div class="px-4 py-3.5 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between bg-slate-50/70 dark:bg-slate-900">
+                        <div class="flex items-center gap-2">
+                            <span class="w-2.5 h-2.5 rounded-full bg-sky-500"></span>
+                            <h2 class="font-bold text-sm uppercase tracking-wider">2. Trolley, Air, Round Wad & Sachet</h2>
+                        </div>
+                    </div>
+                    <div id="logistics-container" class="p-4 space-y-3"></div>
+                </div>
+
+                <!-- SUPERVISORS ON DUTY -->
+                <div class="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/80 p-4 shadow-sm">
+                    <div class="flex items-center justify-between mb-2.5">
+                        <span class="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 flex items-center gap-1.5">
+                            <i data-lucide="shield-check" class="w-4 h-4 text-emerald-500"></i> Supervisors On Duty
+                        </span>
+                    </div>
+                    <div id="sv-duty-list" class="flex flex-wrap gap-2"></div>
+                </div>
+            </section>
+
+        </div>
+    </main>
+
+    <!-- SUPERVISOR EDIT DRAWER -->
+    <div id="admin-drawer" class="fixed inset-0 z-50 hidden">
+        <div class="absolute inset-0 bg-slate-950/60 backdrop-blur-sm" onclick="closeAdminDrawer()"></div>
+        <div class="absolute right-0 top-0 bottom-0 w-full max-w-2xl bg-white dark:bg-slate-900 border-l border-slate-200 dark:border-slate-800 shadow-2xl flex flex-col">
+            <div class="px-6 py-4 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between">
+                <div>
+                    <h3 class="font-bold text-lg">Update Whiteboard Assignments</h3>
+                    <p class="text-xs text-slate-500 dark:text-slate-400">
+                        Session: <strong id="drawer-session-label" class="text-indigo-500"></strong> • 
+                        Showing <span class="text-emerald-500 font-semibold">On-Duty Staff</span> (<span id="drawer-day-label"></span>)
+                    </p>
+                </div>
+                <button onclick="closeAdminDrawer()" class="p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800">
+                    <i data-lucide="x" class="w-5 h-5"></i>
+                </button>
+            </div>
+
+            <!-- Quick Tap On-Duty Staff Chips + Fair Rotation Auto-Assign -->
+            <div class="px-6 py-3 bg-slate-50 dark:bg-slate-950/60 border-b border-slate-200 dark:border-slate-800">
+                <div class="flex flex-wrap items-center justify-between gap-2 mb-2">
+                    <p class="text-[11px] font-bold uppercase tracking-wider text-slate-400">On-Duty Staff (Click a field below, then tap a name):</p>
+                    <button type="button" onclick="autoAssignByMerit()" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-slate-950 shadow-sm transition">
+                        <i data-lucide="sparkles" class="w-3.5 h-3.5"></i>
+                        <span>Auto-Assign (Fair Rotation & Fatigue Engine)</span>
+                    </button>
+                </div>
+                <div id="onduty-chips" class="flex flex-wrap gap-1.5 max-h-24 overflow-y-auto"></div>
+            </div>
+
+            <div class="p-6 overflow-y-auto flex-1 space-y-6" id="drawer-form-body"></div>
+
+            <div class="px-6 py-4 border-t border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 flex items-center justify-between gap-3">
+                <button onclick="copyFromPreviousSession()" class="text-xs font-semibold text-indigo-600 dark:text-indigo-400 hover:underline">
+                    Copy from previous session
+                </button>
+                <div class="flex items-center gap-2">
+                    <button onclick="closeAdminDrawer()" class="px-4 py-2 rounded-lg text-xs font-semibold border border-slate-300 dark:border-slate-700">Cancel</button>
+                    <button onclick="saveDrawerChanges()" class="px-4 py-2 rounded-lg text-xs font-semibold bg-indigo-600 hover:bg-indigo-500 text-white shadow">Save & Update</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- CLOUD SYNC MODAL -->
+    <div id="cloud-modal" class="fixed inset-0 z-50 hidden flex items-center justify-center p-4">
+        <div class="absolute inset-0 bg-slate-950/70 backdrop-blur-sm" onclick="closeCloudSetupModal()"></div>
+        <div class="relative bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl max-w-lg w-full p-6 shadow-2xl space-y-4">
+            <div class="flex items-center justify-between">
+                <h3 class="font-bold text-lg flex items-center gap-2"><i data-lucide="cloud" class="w-5 h-5 text-sky-500"></i> Google Sheets Live Sync</h3>
+                <button onclick="closeCloudSetupModal()" class="p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800"><i data-lucide="x" class="w-4 h-4"></i></button>
+            </div>
+            <p class="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
+                Enter your <strong>Google Apps Script Web App URL</strong> to broadcast supervisor updates live across the Wall TV and all staff smartphones.
+            </p>
+            <div>
+                <label class="block text-xs font-bold mb-1">Web App URL</label>
+                <input id="webhook-url-input" type="url" placeholder="https://script.google.com/macros/s/..." class="w-full px-3 py-2 text-xs rounded-lg border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800">
+            </div>
+            <div class="flex justify-end gap-2 pt-2">
+                <button onclick="closeCloudSetupModal()" class="px-4 py-2 rounded-lg text-xs font-semibold border border-slate-300 dark:border-slate-700">Close</button>
+                <button onclick="saveWebhookUrl()" class="px-4 py-2 rounded-lg text-xs font-semibold bg-sky-600 hover:bg-sky-500 text-white">Save Connection</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- STAFF MERIT & CUMULATIVE FATIGUE MODAL -->
+    <div id="merit-modal" class="fixed inset-0 z-50 hidden flex items-center justify-center p-4">
+        <div class="absolute inset-0 bg-slate-950/70 backdrop-blur-sm" onclick="closeMeritModal()"></div>
+        <div class="relative bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl max-w-3xl w-full max-h-[85vh] flex flex-col shadow-2xl">
+            <div class="px-6 py-4 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between">
+                <div>
+                    <h3 class="font-bold text-lg flex items-center gap-2"><i data-lucide="award" class="w-5 h-5 text-amber-500"></i> Monthly Merits & Cumulative Fatigue Tracker</h3>
+                    <p class="text-xs text-slate-500 dark:text-slate-400">Tracks OT, Combined Wards, and cumulative heavy task fatigue (Heavy=3, Med=2, Easy=1) to rotate heavy duties fairly across the month.</p>
+                </div>
+                <button onclick="closeMeritModal()" class="p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800"><i data-lucide="x" class="w-4 h-4"></i></button>
+            </div>
+            <div class="px-6 py-2.5 bg-slate-50 dark:bg-slate-950/60 border-b border-slate-200 dark:border-slate-800 grid grid-cols-12 gap-2 text-[11px] font-bold uppercase tracking-wider text-slate-400">
+                <div class="col-span-4">Staff Name</div>
+                <div class="col-span-2 text-center">OT (Hrs)</div>
+                <div class="col-span-2 text-center">Comb. Wards</div>
+                <div class="col-span-2 text-center">Fatigue Pts</div>
+                <div class="col-span-2 text-right">Priority Tier</div>
+            </div>
+            <div id="merit-list-body" class="p-6 overflow-y-auto flex-1 space-y-2"></div>
+            <div class="px-6 py-4 border-t border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 flex justify-between items-center gap-2">
+                <button onclick="resetAllMerits()" class="text-xs font-semibold text-rose-500 hover:underline">Reset All Monthly Counters</button>
+                <div class="flex gap-2">
+                    <button onclick="closeMeritModal()" class="px-4 py-2 rounded-lg text-xs font-semibold border border-slate-300 dark:border-slate-700">Cancel</button>
+                    <button onclick="saveMerits()" class="px-4 py-2 rounded-lg text-xs font-semibold bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold">Save Merits</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- TOAST MESSAGE -->
+    <div id="toast" class="fixed bottom-5 right-5 z-50 transform translate-y-20 opacity-0 transition-all duration-300 bg-slate-900 dark:bg-white text-white dark:text-slate-900 px-4 py-3 rounded-xl shadow-xl text-xs font-semibold flex items-center gap-2">
+        <i data-lucide="check-circle-2" class="w-4 h-4 text-emerald-500"></i>
+        <span id="toast-msg">Updated!</span>
+    </div>
+
+<script>
+    // 1. MEAL SESSIONS CONFIG
+    const SESSIONS = [
+        { id: "Breakfast", label: "Breakfast", time: "05:30 – 06:45", startMin: 330, endMin: 570 },
+        { id: "Lunch", label: "Lunch", time: "09:30 – 11:45", startMin: 570, endMin: 810 },
+        { id: "Afternoon Tea", label: "Afternoon Tea", time: "13:30 – 14:45", startMin: 810, endMin: 990 },
+        { id: "Dinner", label: "Dinner", time: "16:30 – 18:45", startMin: 990, endMin: 1440 }
+    ];
+
+    // 2. COMPLETE STAFF & SUPERVISOR ROSTER (16 Nov - 22 Nov 2026)
+    const ROSTER = [
+        { role: "SV", name: "NASIR", shifts: { "16_Mon":"F","17_Tue":"B","18_Wed":"A","19_Thu":"B","20_Fri":"A","21_Sat":"F","22_Sun":"OFF" } },
+        { role: "SV", name: "AKHMAL", shifts: { "16_Mon":"B","17_Tue":"A","18_Wed":"F","19_Thu":"A","20_Fri":"B","21_Sat":"OFF","22_Sun":"F" } },
+        { role: "ASST. SV", name: "FUADY", shifts: { "16_Mon":"B","17_Tue":"B","18_Wed":"B","19_Thu":"B","20_Fri":"B","21_Sat":"OFF","22_Sun":"F" } },
+        { role: "ASST. SV", name: "ARIFF", shifts: { "16_Mon":"A","17_Tue":"A","18_Wed":"B","19_Thu":"A","20_Fri":"A","21_Sat":"F","22_Sun":"OFF" } },
+        { role: "ASST. SV", name: "SYUKRI", shifts: { "16_Mon":"A","17_Tue":"F","18_Wed":"F","19_Thu":"A","20_Fri":"OFF","21_Sat":"B","22_Sun":"B" } },
+        { role: "PSD", name: "ZHAFFRAN", shifts: { "16_Mon":"OFF","17_Tue":"B","18_Wed":"A","19_Thu":"CPH","20_Fri":"CPH","21_Sat":"AL","22_Sun":"UPL" } },
+        { role: "PSD", name: "HAFIZ", shifts: { "16_Mon":"A","17_Tue":"OFF","18_Wed":"B","19_Thu":"F","20_Fri":"F","21_Sat":"A","22_Sun":"F" } },
+        { role: "PSD", name: "NAIM", shifts: { "16_Mon":"F","17_Tue":"A","18_Wed":"A","19_Thu":"OFF","20_Fri":"B","21_Sat":"F","22_Sun":"F" } },
+        { role: "PSD", name: "ADZHAR", shifts: { "16_Mon":"A","17_Tue":"F","18_Wed":"F","19_Thu":"A","20_Fri":"OFF","21_Sat":"AL","22_Sun":"F" } },
+        { role: "PSD", name: "AMIR", shifts: { "16_Mon":"F","17_Tue":"F","18_Wed":"F","19_Thu":"F","20_Fri":"F","21_Sat":"A","22_Sun":"OFF" } },
+        { role: "PSD", name: "PUTERA AMIRUL", shifts: { "16_Mon":"B","17_Tue":"F","18_Wed":"F","19_Thu":"A","20_Fri":"F","21_Sat":"A","22_Sun":"OFF" } },
+        { role: "PSD", name: "DANIEL", shifts: { "16_Mon":"OFF","17_Tue":"B","18_Wed":"A","19_Thu":"F","20_Fri":"F","21_Sat":"F","22_Sun":"A" } },
+        { role: "PSD", name: "AJMAL", shifts: { "16_Mon":"A","17_Tue":"OFF","18_Wed":"B","19_Thu":"F","20_Fri":"A","21_Sat":"F","22_Sun":"F" } },
+        { role: "PSD", name: "SHAHMIZAL (IJAM)", shifts: { "16_Mon":"F","17_Tue":"A","18_Wed":"OFF","19_Thu":"F","20_Fri":"F","21_Sat":"F","22_Sun":"F" } },
+        { role: "PSD", name: "MISYA", shifts: { "16_Mon":"A","17_Tue":"F","18_Wed":"A","19_Thu":"OFF","20_Fri":"B","21_Sat":"F","22_Sun":"F" } },
+        { role: "PSD", name: "RAYNER", shifts: { "16_Mon":"F","17_Tue":"F","18_Wed":"F","19_Thu":"A","20_Fri":"OFF","21_Sat":"B","22_Sun":"F" } },
+        { role: "PSD", name: "ISMA", shifts: { "16_Mon":"F","17_Tue":"UPL","18_Wed":"F","19_Thu":"F","20_Fri":"A","21_Sat":"OFF","22_Sun":"F" } },
+        { role: "PSD", name: "AQILA", shifts: { "16_Mon":"B","17_Tue":"F","18_Wed":"F","19_Thu":"F","20_Fri":"F","21_Sat":"F","22_Sun":"OFF" } },
+        { role: "PSD", name: "AFIQ AIMAN", shifts: { "16_Mon":"OFF","17_Tue":"F","18_Wed":"F","19_Thu":"F","20_Fri":"A","21_Sat":"F","22_Sun":"F" } },
+        { role: "PSD", name: "JOSWAN", shifts: { "16_Mon":"F","17_Tue":"F","18_Wed":"A","19_Thu":"OFF","20_Fri":"B","21_Sat":"A","22_Sun":"F" } },
+        { role: "PSD", name: "ASHIKIN KAMAL", shifts: { "16_Mon":"B","17_Tue":"F","18_Wed":"A","19_Thu":"F","20_Fri":"F","21_Sat":"A","22_Sun":"OFF" } },
+        { role: "PSD", name: "NATASHA", shifts: { "16_Mon":"F","17_Tue":"F","18_Wed":"A","19_Thu":"OFF","20_Fri":"F","21_Sat":"F","22_Sun":"A" } },
+        { role: "PSD", name: "SHAH", shifts: { "16_Mon":"A","17_Tue":"OFF","18_Wed":"B","19_Thu":"F","20_Fri":"A","21_Sat":"F","22_Sun":"B" } },
+        { role: "PSD", name: "HUSNA", shifts: { "16_Mon":"A","17_Tue":"F","18_Wed":"F","19_Thu":"F","20_Fri":"A","21_Sat":"OFF","22_Sun":"B" } },
+        { role: "PSD", name: "NADHIRAH", shifts: { "16_Mon":"F","17_Tue":"A","18_Wed":"OFF","19_Thu":"B","20_Fri":"A","21_Sat":"F","22_Sun":"F" } },
+        { role: "PSD", name: "AKLIL", shifts: { "16_Mon":"OFF","17_Tue":"B","18_Wed":"F","19_Thu":"A","20_Fri":"F","21_Sat":"F","22_Sun":"A" } },
+        { role: "PSD", name: "SYAZA", shifts: { "16_Mon":"A","17_Tue":"OFF","18_Wed":"B","19_Thu":"F","20_Fri":"A","21_Sat":"F","22_Sun":"F" } },
+        { role: "PSD", name: "MARDIANA", shifts: { "16_Mon":"F","17_Tue":"F","18_Wed":"A","19_Thu":"OFF","20_Fri":"F","21_Sat":"F","22_Sun":"A" } },
+        { role: "PSD", name: "PIAN", shifts: { "16_Mon":"A","17_Tue":"F","18_Wed":"B","19_Thu":"A","20_Fri":"OFF","21_Sat":"B","22_Sun":"F" } },
+        { role: "PSD", name: "INTAN", shifts: { "16_Mon":"F","17_Tue":"F","18_Wed":"A","19_Thu":"F","20_Fri":"A","21_Sat":"OFF","22_Sun":"B" } },
+        { role: "PSD", name: "AMIRUL", shifts: { "16_Mon":"F","17_Tue":"F","18_Wed":"A","19_Thu":"F","20_Fri":"A","21_Sat":"CPH","22_Sun":"OFF" } },
+        { role: "PSD", name: "FATIMAH", shifts: { "16_Mon":"OFF","17_Tue":"B","18_Wed":"A","19_Thu":"AL","20_Fri":"AL","21_Sat":"AL","22_Sun":"AL" } },
+        { role: "PSD", name: "ZAMILI", shifts: { "16_Mon":"A","17_Tue":"OFF","18_Wed":"B","19_Thu":"F","20_Fri":"A","21_Sat":"F","22_Sun":"F" } },
+        { role: "PSD", name: "BUKHARI", shifts: { "16_Mon":"OFF","17_Tue":"B","18_Wed":"F","19_Thu":"F","20_Fri":"B","21_Sat":"F","22_Sun":"A" } },
+        { role: "PSD", name: "RAHMAN", shifts: { "16_Mon":"F","17_Tue":"F","18_Wed":"F","19_Thu":"A","20_Fri":"OFF","21_Sat":"F","22_Sun":"F" } },
+        { role: "PSD", name: "SYAHIRAN", shifts: { "16_Mon":"F","17_Tue":"F","18_Wed":"A","19_Thu":"F","20_Fri":"A","21_Sat":"OFF","22_Sun":"F" } },
+        { role: "PSD", name: "PUTERI AZIRA", shifts: { "16_Mon":"CPH","17_Tue":"B","18_Wed":"F","19_Thu":"A","20_Fri":"F","21_Sat":"A","22_Sun":"OFF" } },
+        { role: "PSD", name: "SYAHRUL", shifts: { "16_Mon":"OFF","17_Tue":"F","18_Wed":"F","19_Thu":"F","20_Fri":"A","21_Sat":"F","22_Sun":"A" } },
+        { role: "PSD", name: "AFIQKIMI", shifts: { "16_Mon":"A","17_Tue":"OFF","18_Wed":"F","19_Thu":"F","20_Fri":"F","21_Sat":"F","22_Sun":"F" } },
+        { role: "PSD", name: "SAFIQ", shifts: { "16_Mon":"F","17_Tue":"A","18_Wed":"OFF","19_Thu":"B","20_Fri":"F","21_Sat":"F","22_Sun":"A" } },
+        { role: "PSD", name: "MEGAT", shifts: { "16_Mon":"F","17_Tue":"F","18_Wed":"A","19_Thu":"F","20_Fri":"A","21_Sat":"OFF","22_Sun":"B" } },
+        { role: "PSD", name: "RAFIDAH", shifts: { "16_Mon":"F","17_Tue":"A","18_Wed":"OFF","19_Thu":"B","20_Fri":"F","21_Sat":"F","22_Sun":"F" } },
+        { role: "PSD", name: "HASANAH", shifts: { "16_Mon":"B","17_Tue":"F","18_Wed":"A","19_Thu":"F","20_Fri":"F","21_Sat":"A","22_Sun":"OFF" } },
+        { role: "PSD", name: "MIRA", shifts: { "16_Mon":"OFF","17_Tue":"B","18_Wed":"F","19_Thu":"F","20_Fri":"A","21_Sat":"F","22_Sun":"A" } },
+        { role: "PSD", name: "AZAD", shifts: { "16_Mon":"A","17_Tue":"OFF","18_Wed":"B","19_Thu":"F","20_Fri":"A","21_Sat":"F","22_Sun":"F" } },
+        { role: "PSD", name: "IZWAN", shifts: { "16_Mon":"F","17_Tue":"A","18_Wed":"OFF","19_Thu":"B","20_Fri":"F","21_Sat":"F","22_Sun":"F" } },
+        { role: "PSD", name: "NAZRUL", shifts: { "16_Mon":"F","17_Tue":"A","18_Wed":"F","19_Thu":"A","20_Fri":"OFF","21_Sat":"B","22_Sun":"F" } },
+        { role: "PSD", name: "HANI", shifts: { "16_Mon":"A","17_Tue":"F","18_Wed":"F","19_Thu":"F","20_Fri":"A","21_Sat":"OFF","22_Sun":"B" } },
+        { role: "PSD", name: "ZARINA", shifts: { "16_Mon":"B","17_Tue":"F","18_Wed":"F","19_Thu":"A","20_Fri":"F","21_Sat":"A","22_Sun":"OFF" } },
+        { role: "PSD", name: "FADHIL", shifts: { "16_Mon":"A","17_Tue":"EL","18_Wed":"EL","19_Thu":"OFF","20_Fri":"B","21_Sat":"F","22_Sun":"F" } },
+        { role: "PSD", name: "MARZAN", shifts: { "16_Mon":"F","17_Tue":"F","18_Wed":"F","19_Thu":"A","20_Fri":"OFF","21_Sat":"F","22_Sun":"F" } },
+        { role: "PSD", name: "IRFAN", shifts: { "16_Mon":"A","17_Tue":"F","18_Wed":"A","19_Thu":"OFF","20_Fri":"B","21_Sat":"F","22_Sun":"F" } },
+        { role: "PSD", name: "HAIKAL", shifts: { "16_Mon":"B","17_Tue":"F","18_Wed":"F","19_Thu":"A","20_Fri":"F","21_Sat":"A","22_Sun":"OFF" } },
+        { role: "PSD", name: "NASUHA", shifts: { "16_Mon":"F","17_Tue":"A","18_Wed":"OFF","19_Thu":"B","20_Fri":"F","21_Sat":"F","22_Sun":"F" } },
+        { role: "PSD", name: "AFIF", shifts: { "16_Mon":"OFF","17_Tue":"B","18_Wed":"A","19_Thu":"F","20_Fri":"F","21_Sat":"F","22_Sun":"A" } },
+        { role: "PSD", name: "HANIF", shifts: { "16_Mon":"B","17_Tue":"F","18_Wed":"F","19_Thu":"A","20_Fri":"B","21_Sat":"A","22_Sun":"OFF" } },
+        { role: "PSD", name: "EQAL", shifts: { "16_Mon":"F","17_Tue":"A","18_Wed":"F","19_Thu":"F","20_Fri":"A","21_Sat":"OFF","22_Sun":"F" } },
+        { role: "PSD", name: "MUHAIMIN", shifts: { "16_Mon":"OFF","17_Tue":"B","18_Wed":"F","19_Thu":"B","20_Fri":"F","21_Sat":"F","22_Sun":"A" } }
+    ];
+
+    // 3. WHITEBOARD DEFAULT TEMPLATE (2-COLUMN LAYOUT WITH DIFFICULTY TIERS)
+    const BASE_BOARD = {
+        line: [
+            { station: "RUNNER", staff: "Ajmal + Rayner", extra: "Plate", difficulty: "Heavy", slots: 2 },
+            { station: "TIKET", staff: "Muhaimin", extra: "Plate", difficulty: "Easy", slots: 1 },
+            { station: "MENU A", staff: "Joswan + Marzan", extra: "Bowl", difficulty: "Medium", slots: 2 },
+            { station: "MENU B", staff: "Intan", extra: "Bowl", difficulty: "Easy", slots: 1 },
+            { station: "SAYUR", staff: "Huda + Afiq", extra: "C. Plate", difficulty: "Medium", slots: 2 },
+            { station: "NASI", staff: "Daniel + Pian", extra: "T. Nasi", difficulty: "Heavy", slots: 2 },
+            { station: "BUBUR", staff: "Hafiz", extra: "Bento Knk", difficulty: "Easy", slots: 1 },
+            { station: "BUAH", staff: "Aklil + Azad", extra: "T. Buah", difficulty: "Medium", slots: 2 },
+            { station: "SUDU", staff: "Misya + Zarina", extra: "C. Bowl", difficulty: "Easy", slots: 2 },
+            { station: "COVER", staff: "Shah", extra: "Tray", difficulty: "Easy", slots: 1 },
+            { station: "LOADER", staff: "Rahman + Nazrul", extra: "Tray", difficulty: "Heavy", slots: 2 },
+            { station: "FIRST CLASS", staff: "Mira + Aqila + Syaza", extra: "VIP", difficulty: "Easy", slots: 3 },
+            { station: "SETTING MAKANAN DOCTOR / ED PENDING", staff: "Afiqkimi, Haikal", extra: "Special", difficulty: "Easy", slots: 2 }
+        ],
+        logistics: [
+            { title: "Susun Troli, Letak Air", staff: "Syahrul, Eqal, Putera", badge: "Preboost Trolley", difficulty: "Easy", slots: 3 },
+            { title: "Lap Cover & Bento Knk2", staff: "Megat, Bukhari", badge: "Prep", difficulty: "Easy", slots: 2 },
+            { title: "Isi / Susun Air (2 Kotak Seorang)", staff: "Ajmal, Rayner, Rahman, Nazrul, Syahrul, Eqal, Putera, Azad, Aklil", badge: "2 Kotak/Org", difficulty: "Heavy", slots: 9 },
+            { title: "Round Wad", staff: "Adzhar : 7/8 • Amirul : 5/6 • Hanif : PJ", badge: "Hantar Bukti", difficulty: "Medium", slots: 3 },
+            { title: "Sachet", staff: "Hani : Teh Susu Nd • Husna : Teh'o dd (300) • Puteri : Teh Susu Nd", badge: "Hantar Bukti", difficulty: "Easy", slots: 3 }
+        ]
+    };
+
+    const WEIGHT_MAP = { "Easy": 1, "Medium": 2, "Heavy": 3 };
+    const STORAGE_KEY = "dietetikOps_2col_v9";
+    const MERIT_KEY = "dietetikOps_merits_v2";
+
+    let boardStore = JSON.parse(localStorage.getItem(STORAGE_KEY)) || {
+        "Breakfast": JSON.parse(JSON.stringify(BASE_BOARD)),
+        "Lunch": JSON.parse(JSON.stringify(BASE_BOARD)),
+        "Afternoon Tea": JSON.parse(JSON.stringify(BASE_BOARD)),
+        "Dinner": JSON.parse(JSON.stringify(BASE_BOARD))
+    };
+
+    let meritData = JSON.parse(localStorage.getItem(MERIT_KEY)) || {};
+    ROSTER.forEach(p => {
+        if (!meritData[p.name]) {
+            meritData[p.name] = { ot: 0, combinedWards: 0, fatigue: 0 };
+        }
+    });
+
+    let webhookUrl = localStorage.getItem("dietetikOps_webhook") || "";
+    let activeSession = "Breakfast";
+    let selectedDay = "18_Wed";
+    let selectedStaff = "";
+    let isKiosk = false;
+    let lastFocusedInput = null;
+    let pendingFatigueAdditions = null;
+
+    function initApp() {
+        lucide.createIcons();
+        populateStaffDropdown();
+        detectCurrentSession();
+        renderSessionPills();
+        renderShiftSummary();
+        renderBoard();
+        updateClock();
+        updateSyncBadge();
+        if (webhookUrl) fetchFromCloud();
+        setInterval(updateClock, 15000);
+        setInterval(() => { if (webhookUrl) fetchFromCloud(); }, 30000);
+    }
+
+    function populateStaffDropdown() {
+        const select = document.getElementById("staff-filter");
+        ROSTER.forEach(person => {
+            const opt = document.createElement("option");
+            opt.value = person.name;
+            opt.textContent = `${person.name} (${person.role})`;
+            select.appendChild(opt);
+        });
+    }
+
+    function detectCurrentSession() {
+        const now = new Date();
+        const mins = now.getHours() * 60 + now.getMinutes();
+        const found = SESSIONS.find(s => mins >= s.startMin && mins < s.endMin);
+        activeSession = found ? found.id : "Dinner";
+    }
+
+    function renderSessionPills() {
+        const html = SESSIONS.map(s => {
+            const isActive = s.id === activeSession;
+            return `
+                <button onclick="switchSession('${s.id}')" class="px-3 py-1.5 rounded-lg text-xs font-semibold transition whitespace-nowrap flex items-center gap-1.5 ${
+                    isActive 
+                    ? 'bg-indigo-600 text-white shadow-sm' 
+                    : 'text-slate-600 dark:text-slate-400 hover:bg-slate-200/70 dark:hover:bg-slate-800'
+                }">
+                    <span>${s.label}</span>
+                    <span class="opacity-75 text-[11px] font-normal">${s.time}</span>
+                </button>
+            `;
+        }).join("");
+        document.getElementById("session-pills-desktop").innerHTML = html;
+        document.getElementById("session-pills-mobile").innerHTML = html;
+    }
+
+    function switchSession(sessionId) {
+        activeSession = sessionId;
+        renderSessionPills();
+        renderBoard();
+    }
+
+    function handleDayChange() {
+        selectedDay = document.getElementById("day-selector").value;
+        renderShiftSummary();
+        renderBoard();
+    }
+
+    function renderShiftSummary() {
+        let countA = 0, countB = 0, countF = 0;
+        const svOnDuty = [];
+
+        ROSTER.forEach(p => {
+            const code = p.shifts[selectedDay];
+            if (code === "A") countA++;
+            if (code === "B") countB++;
+            if (code === "F") countF++;
+
+            if (p.role.includes("SV") && ["A","B","F"].includes(code)) {
+                svOnDuty.push({ name: p.name, role: p.role, code });
+            }
+        });
+
+        const totalOnDuty = countA + countB + countF;
+
+        document.getElementById("shift-summary-badges").innerHTML = `
+            <span class="px-2 py-1 rounded-md bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20 font-bold">Shift A: ${countA}</span>
+            <span class="px-2 py-1 rounded-md bg-sky-500/10 text-sky-600 dark:text-sky-400 border border-sky-500/20 font-bold">Shift B: ${countB}</span>
+            <span class="px-2 py-1 rounded-md bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 font-bold">Shift F: ${countF}</span>
+            <span class="px-2.5 py-1 rounded-md bg-indigo-500/15 text-indigo-600 dark:text-indigo-300 border border-indigo-500/30 font-extrabold">Total: ${totalOnDuty}</span>
+        `;
+
+        document.getElementById("sv-duty-list").innerHTML = svOnDuty.map(sv => `
+            <div class="px-2.5 py-1.5 rounded-lg bg-slate-100 dark:bg-slate-800 text-xs font-semibold flex items-center gap-2">
+                <span>${sv.name}</span>
+                <span class="px-1.5 py-0.5 rounded bg-indigo-600 text-white text-[10px]">${sv.code}</span>
+            </div>
+        `).join("");
+    }
+
+    function handleStaffFilter() {
+        selectedStaff = document.getElementById("staff-filter").value;
+        document.getElementById("clear-filter-btn").classList.toggle("hidden", !selectedStaff);
+        renderBoard();
+    }
+
+    function resetFilter() {
+        document.getElementById("staff-filter").value = "";
+        selectedStaff = "";
+        document.getElementById("clear-filter-btn").classList.add("hidden");
+        renderBoard();
+    }
+
+    function matchStaff(text, staffName) {
+        if (!staffName) return false;
+        const firstToken = staffName.split(" ")[0].toLowerCase();
+        return text.toLowerCase().includes(firstToken);
+    }
+
+    function getDifficultyBadge(diff) {
+        const d = diff || "Medium";
+        if (d === "Heavy") {
+            return `<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-rose-500/15 text-rose-500 border border-rose-500/30">Heavy</span>`;
+        }
+        if (d === "Easy") {
+            return `<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-500/15 text-emerald-500 border border-emerald-500/30">Easy</span>`;
+        }
+        return `<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-sky-500/15 text-sky-500 border border-sky-500/30">Medium</span>`;
+    }
+
+    function renderBoard() {
+        const data = boardStore[activeSession];
+        const matchedTasks = [];
+
+        // 1. Render Main Line
+        document.getElementById("line-container").innerHTML = data.line.map(item => {
+            const isMatch = matchStaff(item.staff, selectedStaff);
+            if (isMatch) matchedTasks.push(`${item.station} (${item.extra})`);
+            return `
+                <div class="px-4 py-2.5 flex items-center justify-between gap-2.5 transition ${
+                    isMatch ? 'bg-indigo-500/15 dark:bg-indigo-500/20 border-l-4 border-indigo-500' : 'hover:bg-slate-50 dark:hover:bg-slate-800/40'
+                }">
+                    <span class="px-2.5 py-1 rounded-md bg-amber-400 text-slate-950 font-extrabold text-[11px] tracking-wide min-w-[115px] text-center">
+                        ${item.station}
+                    </span>
+                    <span class="flex-1 font-semibold text-sm">${item.staff}</span>
+                    <div class="flex items-center gap-1.5 shrink-0">
+                        ${getDifficultyBadge(item.difficulty)}
+                        <span class="px-2 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 text-[11px] font-semibold border border-slate-200 dark:border-slate-700">
+                            ${item.extra}
+                        </span>
+                    </div>
+                </div>
+            `;
+        }).join("");
+
+        // 2. Render Logistics
+        document.getElementById("logistics-container").innerHTML = data.logistics.map(item => {
+            const isMatch = matchStaff(item.staff, selectedStaff);
+            if (isMatch) matchedTasks.push(item.title);
+            return `
+                <div class="p-3.5 rounded-xl border transition ${
+                    isMatch 
+                    ? 'border-indigo-500 bg-indigo-500/10' 
+                    : 'border-slate-200 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-950/40'
+                }">
+                    <div class="flex items-center justify-between gap-2 mb-1.5">
+                        <h3 class="text-xs font-bold uppercase tracking-wide text-indigo-600 dark:text-indigo-400">${item.title}</h3>
+                        <div class="flex items-center gap-1.5 shrink-0">
+                            ${getDifficultyBadge(item.difficulty)}
+                            <span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-300">${item.badge}</span>
+                        </div>
+                    </div>
+                    <p class="text-sm font-semibold leading-relaxed">${item.staff}</p>
+                </div>
+            `;
+        }).join("");
+
+        // 3. Personal Spotlight Banner
+        const spotlight = document.getElementById("personal-spotlight");
+        if (selectedStaff) {
+            const person = ROSTER.find(p => p.name === selectedStaff);
+            const shiftCode = person ? person.shifts[selectedDay] : "-";
+            const m = meritData[selectedStaff] || { ot: 0, combinedWards: 0, fatigue: 0 };
+            const shiftDesc = {
+                "A": "Shift A (05:30 AM – 02:00 PM)",
+                "B": "Shift B (11:30 AM – 08:00 PM)",
+                "F": "Shift F • Full (05:30 AM – 08:00 PM)",
+                "OFF": "OFF DAY",
+                "AL": "ANNUAL LEAVE (AL)",
+                "CPH": "REPLACEMENT LEAVE (CPH)",
+                "UPL": "UNPAID LEAVE (UPL)",
+                "EL": "EMERGENCY LEAVE (EL)"
+            }[shiftCode] || shiftCode;
+
+            document.getElementById("spotlight-name").textContent = selectedStaff;
+            document.getElementById("spotlight-shift-status").textContent = `Roster Status: ${shiftDesc}`;
+            document.getElementById("spotlight-session-tag").textContent = `Session: ${activeSession}`;
+            document.getElementById("spotlight-fatigue-tag").textContent = `Monthly Load: ${m.ot}h OT • ${m.combinedWards} Comb. Wards • ${m.fatigue} Fatigue Pts`;
+            document.getElementById("spotlight-tasks").textContent = matchedTasks.length > 0 
+                ? `Your Tasks: ${matchedTasks.join("  •  ")}` 
+                : `No specific station assigned for ${activeSession}. Please check with the supervisor on duty.`;
+            spotlight.classList.remove("hidden");
+        } else {
+            spotlight.classList.add("hidden");
+        }
+    }
+
+    // SUPERVISOR DRAWER WITH DIFFICULTY SELECTORS
+    function openAdminDrawer() {
+        pendingFatigueAdditions = null;
+        document.getElementById("drawer-session-label").textContent = activeSession;
+        const dayText = document.getElementById("day-selector").selectedOptions[0].text;
+        document.getElementById("drawer-day-label").textContent = dayText;
+
+        const onDutyStaff = ROSTER.filter(p => ["A", "B", "F"].includes(p.shifts[selectedDay]));
+        document.getElementById("onduty-chips").innerHTML = onDutyStaff.map(p => {
+            const pts = getStaffPriorityScore(p.name);
+            return `
+                <button type="button" onclick="appendStaffToFocused('${p.name}')" class="px-2 py-1 rounded bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-[11px] font-semibold hover:border-indigo-500 transition">
+                    ${p.name} <span class="text-indigo-500">(${p.shifts[selectedDay]})</span> <span class="text-amber-500 text-[10px]">[${pts}p]</span>
+                </button>
+            `;
+        }).join("");
+
+        const data = boardStore[activeSession];
+        let html = `
+            <div>
+                <h4 class="text-xs font-bold uppercase tracking-wider text-slate-400 mb-3">1. Main Line (Plating) — Staff & Difficulty</h4>
+                <div class="space-y-2.5">
+                    ${data.line.map((item, idx) => `
+                        <div class="grid grid-cols-12 gap-2 items-center">
+                            <label class="col-span-4 text-xs font-bold text-slate-600 dark:text-slate-300 truncate" title="${item.station}">${item.station}</label>
+                            <input onfocus="lastFocusedInput=this" id="edit-line-${idx}" value="${item.staff}" class="col-span-5 px-2.5 py-1.5 text-xs sm:text-sm rounded-lg border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800">
+                            <select id="edit-line-diff-${idx}" class="col-span-3 px-2 py-1.5 text-xs font-semibold rounded-lg border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800">
+                                <option value="Easy" ${(item.difficulty || "Medium") === "Easy" ? "selected" : ""}>🟢 Easy (1p)</option>
+                                <option value="Medium" ${(item.difficulty || "Medium") === "Medium" ? "selected" : ""}>🔵 Med (2p)</option>
+                                <option value="Heavy" ${(item.difficulty || "Medium") === "Heavy" ? "selected" : ""}>🔴 Heavy (3p)</option>
+                            </select>
+                        </div>
+                    `).join("")}
+                </div>
+            </div>
+            <div>
+                <h4 class="text-xs font-bold uppercase tracking-wider text-slate-400 mb-3">2. Trolley, Air, Round Wad & Sachet</h4>
+                <div class="space-y-3">
+                    ${data.logistics.map((item, idx) => `
+                        <div class="p-3 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-950/30 space-y-2">
+                            <div class="flex items-center justify-between gap-2">
+                                <label class="text-xs font-bold text-slate-600 dark:text-slate-300">${item.title}</label>
+                                <select id="edit-log-diff-${idx}" class="px-2 py-1 text-xs font-semibold rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800">
+                                    <option value="Easy" ${(item.difficulty || "Medium") === "Easy" ? "selected" : ""}>🟢 Easy (1p)</option>
+                                    <option value="Medium" ${(item.difficulty || "Medium") === "Medium" ? "selected" : ""}>🔵 Med (2p)</option>
+                                    <option value="Heavy" ${(item.difficulty || "Medium") === "Heavy" ? "selected" : ""}>🔴 Heavy (3p)</option>
+                                </select>
+                            </div>
+                            <input onfocus="lastFocusedInput=this" id="edit-log-${idx}" value="${item.staff}" class="w-full px-3 py-1.5 text-xs sm:text-sm rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800">
+                        </div>
+                    `).join("")}
+                </div>
+            </div>
+        `;
+        document.getElementById("drawer-form-body").innerHTML = html;
+        document.getElementById("admin-drawer").classList.remove("hidden");
+    }
+
+    function appendStaffToFocused(name) {
+        if (!lastFocusedInput) {
+            showToast("Click a station field first, then tap a staff name.");
+            return;
+        }
+        const cur = lastFocusedInput.value.trim();
+        if (!cur || cur === "-") {
+            lastFocusedInput.value = name;
+        } else {
+            lastFocusedInput.value = `${cur} + ${name}`;
+        }
+    }
+
+    function closeAdminDrawer() {
+        document.getElementById("admin-drawer").classList.add("hidden");
+    }
+
+    // CUMULATIVE WORKLOAD FATIGUE & FAIR ROTATION ENGINE
+    function getStaffPriorityScore(name) {
+        const m = meritData[name] || { ot: 0, combinedWards: 0, fatigue: 0 };
+        return (Number(m.ot) || 0) * 1 + (Number(m.combinedWards) || 0) * 3 + (Number(m.fatigue) || 0) * 1;
+    }
+
+    function isStaffActiveForSession(shiftCode, session) {
+        if (!["A", "B", "F"].includes(shiftCode)) return false;
+        if (session === "Breakfast") return shiftCode === "A" || shiftCode === "F";
+        if (session === "Dinner") return shiftCode === "B" || shiftCode === "F";
+        return true;
+    }
+
+    function autoAssignByMerit() {
+        const eligible = ROSTER.filter(p => p.role === "PSD" && isStaffActiveForSession(p.shifts[selectedDay], activeSession));
+        if (eligible.length === 0) {
+            showToast("No on-duty PSD staff found for this shift/session.");
+            return;
+        }
+
+        const ranked = [...eligible].sort((a, b) => {
+            const diff = getStaffPriorityScore(b.name) - getStaffPriorityScore(a.name);
+            return diff !== 0 ? diff : (Math.random() - 0.5);
+        });
+
+        const data = boardStore[activeSession];
+        const fatigueLog = {};
+        const logWeight = (staffName, diff) => {
+            const w = WEIGHT_MAP[diff] || 2;
+            fatigueLog[staffName] = (fatigueLog[staffName] || 0) + w;
+        };
+
+        const lineMeta = data.line.map((item, idx) => {
+            const diffEl = document.getElementById(`edit-line-diff-${idx}`);
+            const diff = diffEl ? diffEl.value : (item.difficulty || "Medium");
+            return { idx, diff, slots: item.slots || 1 };
+        });
+
+        const tierOrder = { "Easy": 1, "Medium": 2, "Heavy": 3 };
+        const orderedStations = [...lineMeta].sort((a, b) => tierOrder[a.diff] - tierOrder[b.diff]);
+
+        let cursor = 0;
+        const pickNext = (count) => {
+            const picked = [];
+            for (let i = 0; i < count; i++) {
+                const person = ranked[cursor % ranked.length];
+                picked.push(person.name);
+                cursor++;
+            }
+            return picked;
+        };
+
+        orderedStations.forEach(st => {
+            const assignedNames = pickNext(st.slots);
+            assignedNames.forEach(n => logWeight(n, st.diff));
+            const inputEl = document.getElementById(`edit-line-${st.idx}`);
+            if (inputEl) inputEl.value = assignedNames.join(" + ");
+        });
+
+        data.logistics.forEach((item, idx) => {
+            const diffEl = document.getElementById(`edit-log-diff-${idx}`);
+            const diff = diffEl ? diffEl.value : (item.difficulty || "Medium");
+            const inputEl = document.getElementById(`edit-log-${idx}`);
+            if (!inputEl) return;
+
+            if (idx === 0) {
+                const topEasy = ranked.slice(0, Math.min(3, ranked.length)).map(p => p.name);
+                topEasy.forEach(n => logWeight(n, diff));
+                inputEl.value = topEasy.join(", ");
+            } else if (idx === 1) {
+                const nextEasy = ranked.slice(3, Math.min(5, ranked.length)).map(p => p.name);
+                if (nextEasy.length) {
+                    nextEasy.forEach(n => logWeight(n, diff));
+                    inputEl.value = nextEasy.join(", ");
+                }
+            } else if (idx === 2) {
+                const freshest = [...ranked].reverse().slice(0, Math.min(9, ranked.length)).map(p => p.name);
+                freshest.forEach(n => logWeight(n, diff));
+                inputEl.value = freshest.join(", ");
+            }
+        });
+
+        pendingFatigueAdditions = fatigueLog;
+        showToast("Auto-assigned by Fair Rotation! Click 'Save & Update' to record fatigue points.");
+    }
+
+    async function saveDrawerChanges() {
+        const data = boardStore[activeSession];
+        data.line.forEach((item, idx) => {
+            item.staff = document.getElementById(`edit-line-${idx}`).value;
+            const diffEl = document.getElementById(`edit-line-diff-${idx}`);
+            if (diffEl) item.difficulty = diffEl.value;
+        });
+        data.logistics.forEach((item, idx) => {
+            item.staff = document.getElementById(`edit-log-${idx}`).value;
+            const diffEl = document.getElementById(`edit-log-diff-${idx}`);
+            if (diffEl) item.difficulty = diffEl.value;
+        });
+
+        if (pendingFatigueAdditions) {
+            Object.entries(pendingFatigueAdditions).forEach(([staffName, pts]) => {
+                if (!meritData[staffName]) meritData[staffName] = { ot: 0, combinedWards: 0, fatigue: 0 };
+                meritData[staffName].fatigue = (Number(meritData[staffName].fatigue) || 0) + pts;
+            });
+            localStorage.setItem(MERIT_KEY, JSON.stringify(meritData));
+            pendingFatigueAdditions = null;
+        }
+
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(boardStore));
+        closeAdminDrawer();
+        renderBoard();
+
+        if (webhookUrl) {
+            try {
+                await fetch(webhookUrl, {
+                    method: "POST",
+                    body: JSON.stringify({ boardStore, meritData })
+                });
+                showToast(`${activeSession} synced to Google Sheets!`);
+            } catch (e) {
+                showToast(`Saved locally (Cloud sync failed)`);
+            }
+        } else {
+            showToast(`${activeSession} updated & fatigue logged!`);
+        }
+    }
+
+    function copyFromPreviousSession() {
+        const order = ["Breakfast", "Lunch", "Afternoon Tea", "Dinner"];
+        const idx = order.indexOf(activeSession);
+        const prevSession = order[idx > 0 ? idx - 1 : 3];
+        boardStore[activeSession] = JSON.parse(JSON.stringify(boardStore[prevSession]));
+        openAdminDrawer();
+        showToast(`Copied from ${prevSession}`);
+    }
+
+    // MERIT & CUMULATIVE FATIGUE TRACKER MODAL
+    function openMeritModal() {
+        const psdStaff = ROSTER.filter(p => p.role === "PSD");
+        document.getElementById("merit-list-body").innerHTML = psdStaff.map((p, idx) => {
+            const m = meritData[p.name] || { ot: 0, combinedWards: 0, fatigue: 0 };
+            const totalScore = getStaffPriorityScore(p.name);
+            let tierBadge = `<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-slate-200 dark:bg-slate-800 text-slate-500">Fresh</span>`;
+            if (totalScore >= 12) {
+                tierBadge = `<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-500/15 text-emerald-500 border border-emerald-500/30">Easy Priority</span>`;
+            } else if (totalScore >= 5) {
+                tierBadge = `<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-sky-500/15 text-sky-500 border border-sky-500/30">Balanced</span>`;
+            }
+
+            return `
+                <div class="grid grid-cols-12 gap-2 items-center py-1.5 border-b border-slate-100 dark:border-slate-800/70">
+                    <div class="col-span-4 text-xs font-bold truncate" title="${p.name}">${p.name}</div>
+                    <div class="col-span-2">
+                        <input type="number" min="0" step="0.5" id="merit-ot-${idx}" value="${m.ot || 0}" class="w-full px-2 py-1 text-xs text-center rounded border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800">
+                    </div>
+                    <div class="col-span-2">
+                        <input type="number" min="0" step="1" id="merit-cw-${idx}" value="${m.combinedWards || 0}" class="w-full px-2 py-1 text-xs text-center rounded border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800">
+                    </div>
+                    <div class="col-span-2">
+                        <input type="number" min="0" step="1" id="merit-fat-${idx}" value="${m.fatigue || 0}" class="w-full px-2 py-1 text-xs text-center rounded border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 font-bold text-amber-500">
+                    </div>
+                    <div class="col-span-2 text-right">${tierBadge}</div>
+                </div>
+            `;
+        }).join("");
+        document.getElementById("merit-modal").classList.remove("hidden");
+    }
+
+    function closeMeritModal() {
+        document.getElementById("merit-modal").classList.add("hidden");
+    }
+
+    function saveMerits() {
+        const psdStaff = ROSTER.filter(p => p.role === "PSD");
+        psdStaff.forEach((p, idx) => {
+            meritData[p.name] = {
+                ot: parseFloat(document.getElementById(`merit-ot-${idx}`).value) || 0,
+                combinedWards: parseInt(document.getElementById(`merit-cw-${idx}`).value, 10) || 0,
+                fatigue: parseInt(document.getElementById(`merit-fat-${idx}`).value, 10) || 0
+            };
+        });
+        localStorage.setItem(MERIT_KEY, JSON.stringify(meritData));
+        closeMeritModal();
+        renderBoard();
+        showToast("Monthly Merits & Fatigue points saved!");
+    }
+
+    function resetAllMerits() {
+        ROSTER.forEach(p => {
+            meritData[p.name] = { ot: 0, combinedWards: 0, fatigue: 0 };
+        });
+        localStorage.setItem(MERIT_KEY, JSON.stringify(meritData));
+        openMeritModal();
+        showToast("All monthly merit & fatigue counters reset to 0.");
+    }
+
+    // CLOUD SYNC MODAL
+    function openCloudSetupModal() {
+        document.getElementById("webhook-url-input").value = webhookUrl;
+        document.getElementById("cloud-modal").classList.remove("hidden");
+    }
+
+    function closeCloudSetupModal() {
+        document.getElementById("cloud-modal").classList.add("hidden");
+    }
+
+    function saveWebhookUrl() {
+        webhookUrl = document.getElementById("webhook-url-input").value.trim();
+        localStorage.setItem("dietetikOps_webhook", webhookUrl);
+        updateSyncBadge();
+        closeCloudSetupModal();
+        if (webhookUrl) fetchFromCloud();
+        showToast(webhookUrl ? "Cloud Sync Connected!" : "Switched to Local Mode");
+    }
+
+    function updateSyncBadge() {
+        const badge = document.getElementById("sync-badge");
+        if (webhookUrl) {
+            badge.innerHTML = `<span class="w-1.5 h-1.5 rounded-full bg-sky-500 animate-pulse"></span> CLOUD LIVE`;
+            badge.className = "inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-sky-500/10 text-sky-600 dark:text-sky-400 border border-sky-500/20";
+        } else {
+            badge.innerHTML = `<span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span> LIVE BOARD`;
+            badge.className = "inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20";
+        }
+    }
+
+    async function fetchFromCloud() {
+        if (!webhookUrl) return;
+        try {
+            const res = await fetch(webhookUrl);
+            const cloudData = await res.json();
+            if (cloudData && cloudData.boardStore && cloudData.boardStore.Breakfast) {
+                boardStore = cloudData.boardStore;
+                if (cloudData.meritData) meritData = cloudData.meritData;
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(boardStore));
+                localStorage.setItem(MERIT_KEY, JSON.stringify(meritData));
+                renderBoard();
+            } else if (cloudData && cloudData.Breakfast) {
+                boardStore = cloudData;
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(boardStore));
+                renderBoard();
+            }
+        } catch (err) {
+            console.warn("Cloud fetch skipped:", err);
+        }
+    }
+
+    function toggleTheme() {
+        document.documentElement.classList.toggle("dark");
+        lucide.createIcons();
+    }
+
+    function toggleKioskMode() {
+        isKiosk = !isKiosk;
+        document.getElementById("control-bar").classList.toggle("hidden", isKiosk);
+        if (isKiosk && document.documentElement.requestFullscreen) {
+            document.documentElement.requestFullscreen().catch(() => {});
+        } else if (!isKiosk && document.fullscreenElement) {
+            document.exitFullscreen().catch(() => {});
+        }
+        showToast(isKiosk ? "TV Kiosk Mode Enabled" : "Standard View");
+    }
+
+    function showToast(msg) {
+        const toast = document.getElementById("toast");
+        document.getElementById("toast-msg").textContent = msg;
+        toast.classList.remove("translate-y-20", "opacity-0");
+        setTimeout(() => toast.classList.add("translate-y-20", "opacity-0"), 3000);
+    }
+
+    function updateClock() {
+        const now = new Date();
+        document.getElementById("live-clock").textContent = now.toLocaleString('en-MY', {
+            weekday: 'long', day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit'
+        });
+    }
+
+    initApp();
+</script>
+</body>
+</html>
