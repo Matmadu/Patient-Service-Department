@@ -357,11 +357,11 @@
             { station: "SETTING MAKANAN DOCTOR / ED PENDING", staff: "Afiqkimi, Haikal", extra: "Special", difficulty: 1 }
         ],
         logistics: [
-            { title: "Lap, Susun Troli, Letak Air", staff: "Syahrul, Eqal, Putera", badge: "Trolley", difficulty: 3 },
+            { title: "Susun Troli, Letak Air", staff: "Syahrul, Eqal, Putera", badge: "Trolley", difficulty: 1 },
             { title: "Isi / Susun Air (Lap Cover & Bento Knk)", staff: "Megat, Bukhari", badge: "Prep", difficulty: 2 },
-            { title: "Isi / Susun Air (* 2 Kotak Seorang)", staff: "Ajmal, Rayner, Rahman, Nazrul, Syahrul, Eqal, Putera, Azad, Aklil", badge: "2 Kotak/Org", difficulty: 3 },
+            { title: "Isi / Susun Air (2 Kotak Seorang)", staff: "Ajmal, Rayner, Rahman, Nazrul, Syahrul, Eqal, Putera, Azad, Aklil", badge: "2 Kotak/Org", difficulty: 3 },
             { title: "Round Wad", staff: "Adzhar : 7/8 • Amirul : 5/6 • Hanif : PJ", badge: "Ward Round", difficulty: 2 },
-            { title: "Sachet", staff: "Hani : Teh Susu Nd • Husna : Teh'o dd (* 300) • Puteri : Teh Susu Nd", badge: "Sachet", difficulty: 1 }
+            { title: "Sachet", staff: "Hani : Teh Susu Nd • Husna : Teh'o dd (300) • Puteri : Teh Susu Nd", badge: "Sachet", difficulty: 1 }
         ]
     };
 
@@ -382,7 +382,7 @@
         return (Number(m.ot) || 0) + ((Number(m.combined) || 0) * 3);
     }
 
-    let boardStore = JSON.parse(localStorage.getItem("dietetikOps_2col_v1")) || {
+    let boardStore = JSON.parse(localStorage.getItem("dietetikOps_2col_v4")) || {
         "Breakfast": JSON.parse(JSON.stringify(BASE_BOARD)),
         "Lunch": JSON.parse(JSON.stringify(BASE_BOARD)),
         "Afternoon Tea": JSON.parse(JSON.stringify(BASE_BOARD)),
@@ -705,7 +705,7 @@
             if (!data.logistics[idx]) return;
             const input = document.getElementById(`edit-log-${idx}`);
             if (idx === 4) {
-                input.value = `${pickNext(1)} : Teh Susu Nd • ${pickNext(1)} : Teh'o dd (* 300) • ${pickNext(1)} : Teh Susu Nd`;
+                input.value = `${pickNext(1)} : Teh Susu Nd • ${pickNext(1)} : Teh'o dd (300) • ${pickNext(1)} : Teh Susu Nd`;
             } else if (idx === 3) {
                 input.value = `${pickNext(1)} : 7/8 • ${pickNext(1)} : 5/6 • ${pickNext(1)} : PJ`;
             } else if (idx === 1) {
@@ -719,80 +719,6 @@
         });
 
         showToast("Auto-assigned using SV's Easy/Medium/Heavy settings!");
-    }
-
-    // MERIT-BASED AUTO-ASSIGNMENT ALGORITHM
-    function autoAssignByMerit() {
-        const available = ROSTER.filter(p => {
-            if (p.role !== "PSD") return false;
-            const shift = p.shifts[selectedDay];
-            if (activeSession === "Breakfast") return shift === "A" || shift === "F";
-            if (activeSession === "Dinner") return shift === "B" || shift === "F";
-            return ["A", "B", "F"].includes(shift);
-        });
-
-        if (available.length < 10) {
-            showToast("Not enough on-duty PSD staff for selected day/session.");
-            return;
-        }
-
-        // Sort descending by Merit Score (Highest OT + Combined Wards get Easy stations first)
-        const sortedByMerit = [...available].sort((a, b) => getMeritScore(b.name) - getMeritScore(a.name));
-        let poolIdx = 0;
-        const pickNext = (count = 1) => {
-            const picked = [];
-            for (let i = 0; i < count; i++) {
-                picked.push(sortedByMerit[poolIdx % sortedByMerit.length].name);
-                poolIdx++;
-            }
-            return picked.join(" + ");
-        };
-
-        const data = boardStore[activeSession];
-
-        // 1. Assign Easy stations (difficulty 1) to top-merit staff first
-        data.line.forEach((item, idx) => {
-            if ((item.difficulty || 2) === 1) {
-                const slots = item.staff.includes("+") || item.staff.includes(",") ? 2 : 1;
-                document.getElementById(`edit-line-${idx}`).value = pickNext(slots);
-            }
-        });
-
-        // 2. Assign Medium stations (difficulty 2) to mid-merit staff
-        data.line.forEach((item, idx) => {
-            if ((item.difficulty || 2) === 2) {
-                const slots = item.station === "FIRST CLASS" ? 3 : (item.staff.includes("+") ? 2 : 1);
-                document.getElementById(`edit-line-${idx}`).value = pickNext(slots);
-            }
-        });
-
-        // 3. Assign Heavy physical stations (difficulty 3) to lowest-merit / freshest staff
-        data.line.forEach((item, idx) => {
-            if ((item.difficulty || 2) === 3) {
-                const slots = item.staff.includes("+") ? 2 : 1;
-                document.getElementById(`edit-line-${idx}`).value = pickNext(slots);
-            }
-        });
-
-        // 4. Assign Logistics (Easy -> Heavy)
-        [4, 1, 3, 0, 2].forEach(idx => {
-            if (!data.logistics[idx]) return;
-            const input = document.getElementById(`edit-log-${idx}`);
-            if (idx === 4) {
-                input.value = `${pickNext(1)} : Teh Susu Nd • ${pickNext(1)} : Teh'o dd (* 300) • ${pickNext(1)} : Teh Susu Nd`;
-            } else if (idx === 3) {
-                input.value = `${pickNext(1)} : 7/8 • ${pickNext(1)} : 5/6 • ${pickNext(1)} : PJ`;
-            } else if (idx === 1) {
-                input.value = `${pickNext(1)}, ${pickNext(1)}`;
-            } else if (idx === 0) {
-                input.value = `${pickNext(1)}, ${pickNext(1)}, ${pickNext(1)}`;
-            } else if (idx === 2) {
-                const nine = Array.from({ length: 9 }, () => pickNext(1)).join(", ");
-                input.value = nine;
-            }
-        });
-
-        showToast("Auto-assigned! High OT & Combined Ward staff placed on Easy stations.");
     }
 
     // MERITS & OT MODAL FUNCTIONS
@@ -875,7 +801,7 @@
             item.difficulty = Number(document.getElementById(`edit-log-diff-${idx}`).value) || 2;
         });
 
-        localStorage.setItem("dietetikOps_2col_v1", JSON.stringify(boardStore));
+        localStorage.setItem("dietetikOps_2col_v4", JSON.stringify(boardStore));
         closeAdminDrawer();
         renderBoard();
 
@@ -940,7 +866,7 @@
             const cloudData = await res.json();
             if (cloudData && cloudData.Breakfast) {
                 boardStore = cloudData;
-                localStorage.setItem("dietetikOps_2col_v1", JSON.stringify(boardStore));
+                localStorage.setItem("dietetikOps_2col_v4", JSON.stringify(boardStore));
                 renderBoard();
             }
         } catch (err) {
